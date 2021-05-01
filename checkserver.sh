@@ -3,7 +3,7 @@
 # README
 # ------
 # Before this script will work, you must:
-#  - ensure cron and jq are installed in /usr/bin/
+#  - ensure curl and jq are installed in /usr/bin/
 #  - edit the config information below OR replace mailgun related code with local SMTP or a alternative mailer service
 
 # CONFIG
