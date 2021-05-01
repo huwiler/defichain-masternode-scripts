@@ -28,8 +28,8 @@
 ####################################
 email_admin () {
 
-  # If not using mailgun, replace this with whatever SMTP solution you wish to use.  Arguments $1 and $2 contain
-  # email subject and message respectively.
+  # If not using mailgun, replace this with whatever SMTP or other notification solution you wish to use.  Arguments $1
+  # and $2 contain email subject and message respectively.
 
   curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}"
 }
@@ -92,7 +92,7 @@ if [[ -f "${MINTED_BLOCKS_FILE}" ]]; then
   PREVIOUS_MINTED_BLOCKS="$(<${MINTED_BLOCKS_FILE})"
   if [[ ${MINTED_BLOCKS} > ${PREVIOUS_MINTED_BLOCKS} ]]; then
     SUBJECT="Woo-hoo!! Master Node Rewards Incoming!"
-    MESSAGE=$(printf "You master node just earned its ${MINTED_BLOCKS}$(ordinal ${MINTED_BLOCKS}) DeFiChain Reward!")
+    MESSAGE=$(printf "Your master node just earned its ${MINTED_BLOCKS}$(ordinal ${MINTED_BLOCKS}) DeFiChain Reward!")
     email_admin "${SUBJECT}" "${MESSAGE}"
   fi
 fi
