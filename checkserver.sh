@@ -90,6 +90,8 @@ if [[ -f "${MINTED_BLOCKS_FILE}" ]]; then
   fi
 fi
 
+echo "${MINTED_BLOCKS}" > ${MINTED_BLOCKS_FILE}
+
 echo ""
 echo "Your master node is running perfectly :-)"
 echo ""
