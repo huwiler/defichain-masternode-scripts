@@ -32,6 +32,8 @@ email_admin () {
   # and $2 contain email subject and message respectively.
 
   curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}"
+  echo "${1}"
+  echo "${2}"
 }
 
 ##################################################################
