@@ -8,6 +8,9 @@
 
 # CONFIG
 # ------
+#
+# If using mailgun, uncomment the following lines and replace with your account information
+#
 #MAIL_GUN_DOMAIN=mg.yourdomain.com
 #MAIL_GUN_API=https://api.mailgun.net/v3/mg.yourdomain.com/messages
 #MAIL_GUN_USER=api:key-123abcdefghijklmnopqrstuvwxyz123
@@ -24,6 +27,10 @@
 #   Email subject, Email text
 ####################################
 email_admin () {
+
+  # If not using mailgun, replace this with whatever SMTP solution you wish to use.  Arguments $1 and $2 contain
+  # email subject and message respectively.
+
   curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}"
 }
 
