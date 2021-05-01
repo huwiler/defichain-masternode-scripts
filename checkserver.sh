@@ -71,7 +71,7 @@ fi
 #########################
 
 LOCAL_HASH=$(./.defi/defi-cli getblockhash $BLOCK_HEIGHT)
-MAIN_NET_HASH=$(/usr/bin/curl -s https://bitcore.az-staging-0.defichain-wallet.com/api/DFI/mainnet/block/${BLOCK_HEIGHT} | /usr/bin/jq -r '.hash')
+MAIN_NET_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${BLOCK_HEIGHT} | /usr/bin/jq -r '.hash')
 
 if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
   SUBJECT="Uh-oh!! Master Node Chain Split Detected!!!"
