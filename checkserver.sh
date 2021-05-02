@@ -78,7 +78,7 @@ MAIN_NET_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/
 
 if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
   SUBJECT="Uh-oh!! Master Node Chain Split Detected!!!"
-  MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log and comparing block hashes in explorer.\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '185.244.194.174:8555' add\n     addnode '185.244.194.174:8555' add")
+  MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '185.244.194.174:8555' add\n     addnode '185.244.194.174:8555' add")
   email_admin "${SUBJECT}" "${MESSAGE}"
   exit 1
 fi
@@ -95,7 +95,7 @@ if [[ -f "${MINTED_BLOCKS_FILE}" ]]; then
   PREVIOUS_MINTED_BLOCKS="$(<${MINTED_BLOCKS_FILE})"
   if [[ ${MINTED_BLOCKS} > ${PREVIOUS_MINTED_BLOCKS} ]]; then
     SUBJECT="Woo-hoo!! Master Node Rewards Incoming!"
-    MESSAGE=$(printf "Your master node just earned its ${MINTED_BLOCKS}$(ordinal ${MINTED_BLOCKS}) DeFiChain Reward!")
+    MESSAGE=$(printf "Your master node just earned its $(ordinal ${MINTED_BLOCKS}) DeFiChain Reward!")
     email_admin "${SUBJECT}" "${MESSAGE}"
   fi
 fi
