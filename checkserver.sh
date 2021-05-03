@@ -2,7 +2,20 @@
 
 # README
 # ------
-# Before this script will work, you must:
+#
+# This script is designed to be a passive DeFiChain master node monitoring solution.  It will examine the state of your
+# server and alert you to any problems it finds.  More details and specifics can be found in the README.md of the GIT
+# repo linked below.
+#
+# Bugs or suggestions?  Please either message me directly (huwilerm@champlain.edu) or submit a pull request to
+# https://github.com/huwiler/defichain-masternode-scripts
+#
+#
+# INSTALLATION
+# ------------
+#
+# Before this script will work you must:
+#
 #  - ensure curl and jq are installed in /usr/bin/
 #  - run from the home directory that contains the .defi folder as that user
 #  - if you want the script to send you email, uncomment and edit the config information below OR replace mailgun
@@ -12,7 +25,7 @@
 #
 #    */30 * * * * /home/huwiler/bin/checkserver.sh
 #
-
+#
 # CONFIG
 # ------
 #
