@@ -16,6 +16,12 @@
 #MAIL_GUN_USER=api:key-123abcdefghijklmnopqrstuvwxyz123
 #EMAIL=you@emaildomain.com
 
+DEBUG_LOG_PATH="./.defi/debug.log"
+
+# To fix chain splits, these nodes are added at final step of instructions sent to admin
+NODE1="185.244.194.174:8555"
+NODE2="45.157.177.82:8555"
+
 ####################################
 # Alert master-node admin via email
 # Globals:
