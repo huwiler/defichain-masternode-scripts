@@ -4,7 +4,8 @@
 # ------
 # Before this script will work, you must:
 #  - ensure curl and jq are installed in /usr/bin/
-#  - edit the config information below OR replace mailgun related code with local SMTP or a alternative mailer service
+#  - if you want the script to send you email, uncomment and edit the config information below OR replace mailgun
+#    related code in notify() with local SMTP or a alternative mailer service
 
 # CONFIG
 # ------
@@ -23,8 +24,8 @@ DEBUG_LOG_PATH="./.defi/debug.log"
 NODE1="185.244.194.174:8555"
 NODE2="45.157.177.82:8555"
 
-####################################
-# Alert master-node admin via email
+######################################################################
+# Alert master-node admin via stdout and email if mail gun configured
 # Globals:
 #   MAIL_GUN_API
 #   MAIL_GUN_USER
@@ -32,15 +33,19 @@ NODE2="45.157.177.82:8555"
 #   EMAIL
 # Arguments:
 #   Email subject, Email text
-####################################
-email_admin () {
+######################################################################
+notify () {
+
+  if [[ -v $MAIL_GUN_DOMAIN && -v $MAIL_GUN_USER && -v $MAIL_GUN_API && EMAIL ]]; then
+    curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}"
+  fi
 
   # If not using mailgun, replace this with whatever SMTP or other notification solution you wish to use.  Arguments $1
   # and $2 contain email subject and message respectively.
 
-  curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}"
   echo "${1}"
   echo "${2}"
+
 }
 
 ##################################################################
@@ -71,7 +76,7 @@ BLOCK_DIFF=$((MAIN_NET_BLOCK_HEIGHT - BLOCK_HEIGHT))
 if [[ ${BLOCK_DIFF} -gt 1 ]]; then
   SUBJECT="Uh-oh!! Your Master Node Is Out Of Sync!"
   MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but the main net is ${BLOCK_DIFF} blocks ahead (${MAIN_NET_BLOCK_HEIGHT})")
-  email_admin "${SUBJECT}" "${MESSAGE}"
+  notify "${SUBJECT}" "${MESSAGE}"
 fi
 
 
@@ -121,14 +126,14 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
         fi
       fi
 
-      email_admin "${SUBJECT}" "${MESSAGE}"
+      notify "${SUBJECT}" "${MESSAGE}"
       exit 1
 
     else
 
       SUBJECT="Remote Master Node Chain Split Detected!"
       MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.")
-      email_admin "${SUBJECT}" "${MESSAGE}"
+      notify "${SUBJECT}" "${MESSAGE}"
 
     fi
 
@@ -136,7 +141,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
     SUBJECT="Uh-oh!! **Possible** Local Master Node Chain Split Detected!!!"
     MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nNote that this script could not find debug.log to verify whether or not this split occurred locally or on the remote node.\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '${NODE1}' add\n 5: defi-cli addnode '${NODE2}' add")
-    email_admin "${SUBJECT}" "${MESSAGE}"
+    notify "${SUBJECT}" "${MESSAGE}"
     exit 1
 
   fi
@@ -156,7 +161,7 @@ if [[ -f "${MINTED_BLOCKS_FILE}" ]]; then
   if [[ ${MINTED_BLOCKS} > ${PREVIOUS_MINTED_BLOCKS} ]]; then
     SUBJECT="Woo-hoo!! Master Node Rewards Incoming!"
     MESSAGE=$(printf "Your master node just earned its $(ordinal ${MINTED_BLOCKS}) DeFiChain Reward!")
-    email_admin "${SUBJECT}" "${MESSAGE}"
+    notify "${SUBJECT}" "${MESSAGE}"
   fi
 fi
 
