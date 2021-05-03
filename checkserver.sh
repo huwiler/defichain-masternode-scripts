@@ -37,7 +37,7 @@ NODE2="45.157.177.82:8555"
 ######################################################################
 notify () {
 
-  if [[ -v $MAIL_GUN_DOMAIN && -v $MAIL_GUN_USER && -v $MAIL_GUN_API && EMAIL ]]; then
+  if [[ -v MAIL_GUN_DOMAIN && -v MAIL_GUN_USER && -v MAIL_GUN_API && -v EMAIL ]]; then
     curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}"
   fi
 
