@@ -7,6 +7,11 @@
 #  - run from the home directory that contains the .defi folder as that user
 #  - if you want the script to send you email, uncomment and edit the config information below OR replace mailgun
 #    related code in notify() with local SMTP or a alternative mailer service
+#  - Once mail gun (or other notification service) is configured, I recommend setting this up to run from cron.  For
+#    example, I run this every half hour via the following crontab entry:
+#
+#    */30 * * * * /home/huwiler/bin/checkserver.sh
+#
 
 # CONFIG
 # ------
