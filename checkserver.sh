@@ -18,6 +18,7 @@
 
 DEBUG_LOG_PATH="./.defi/debug.log"
 
+
 # To fix chain splits, these nodes are added at final step of instructions sent to admin
 NODE1="185.244.194.174:8555"
 NODE2="45.157.177.82:8555"
@@ -83,10 +84,63 @@ LOCAL_HASH=$(./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT})
 MAIN_NET_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT} | /usr/bin/jq -r '.hash')
 
 if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
-  SUBJECT="Uh-oh!! Master Node Chain Split Detected!!!"
-  MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '185.244.194.174:8555' add\n     addnode '185.244.194.174:8555' add")
-  email_admin "${SUBJECT}" "${MESSAGE}"
-  exit 1
+
+  if [[ -f ${DEBUG_LOG_PATH} ]]; then
+
+    if [[ $(tail -n 10 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
+
+      SUBJECT="Uh-oh!! Local Master Node Chain Split Detected!!!"
+      MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '${NODE1}' add\n 5: defi-cli addnode '${NODE2}' add\n\nNote that an attempt to find the split block was attempted and failed.  You can help improve this script by notifying huwilerm@champlain.edu and sending him your debug.log.")
+
+      # Attempt to find block where split occurred and supply admin with exact code required to fix
+      #
+      # Explanation:
+      #
+      # When split occurs, "proof of stake" errors will emit in the debug log starting right after the incorrect block
+      # like this:
+      #
+      # 2021-04-27T06:31:25Z UpdateTip: new best=520903fa2a984fa5aa4af92f9bdeaffa3a1a4aa7a8a17d8260d3ca07d174931f height=808493 version=0x20000000 log2_work=80.765327 tx=2530112 date='2021-04-27T06:31:24Z' progress=1.000000 cache=0.4MiB(2084txo)
+      # 2021-04-27T06:31:25Z ERROR: ProcessNewBlock: AcceptBlock FAILED (high-hash, proof of stake failed (code 16))
+      #
+      # This code attempts to find these lines in the debug log, verifies the split block has incorrect hash, and then
+      # verifies that the block before it has the correct hash.  Exact code to verify and fix is then sent to admin.
+
+      DEBUG_LOG_LINE_OF_SPLIT=$(tac ${DEBUG_LOG_PATH} | grep -m 1 UpdateTip)
+      DEBUG_LOG_REGEX="best=([0-9a-f]+)[[:space:]]height=([0-9]+)"
+      if [[ ${DEBUG_LOG_LINE_OF_SPLIT} =~ $DEBUG_LOG_REGEX ]]; then
+        SPLIT_HASH=${BASH_REMATCH[1]}
+        SPLIT_HEIGHT=${BASH_REMATCH[2]}
+        MAIN_NET_SPLIT_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${SPLIT_HEIGHT} | /usr/bin/jq -r '.hash')
+        if [[ ${SPLIT_HASH} != ${MAIN_NET_SPLIT_HASH} ]]; then
+          let "ONE_BEFORE_SPLIT_HEIGHT = $SPLIT_HEIGHT - 1"
+          ONE_BEFORE_SPLIT_HASH=$(./.defi/defi-cli getblockhash ${ONE_BEFORE_SPLIT_HEIGHT})
+          MAIN_NET_ONE_BEFORE_SPLIT_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ONE_BEFORE_SPLIT_HEIGHT} | /usr/bin/jq -r '.hash')
+          if [[ ${ONE_BEFORE_SPLIT_HASH} = ${MAIN_NET_ONE_BEFORE_SPLIT_HASH} ]]; then
+            MESSAGE=$(printf "DeFiChain Split detected at block ${SPLIT_HEIGHT}.\n\nVerify using ...\n\n./.defi/defi-cli getblockhash ${ONE_BEFORE_SPLIT_HEIGHT}\n./.defi/defi-cli getblockhash ${SPLIT_HEIGHT}\n\n... and comparing with ...\n\nhttps://explorer.defichain.com/#/DFI/mainnet/block/${ONE_BEFORE_SPLIT_HASH}\nhttps://explorer.defichain.com/#/DFI/mainnet/block/${ONE_BEFORE_SPLIT_HASH}\n\nTo fix:\n 1: defi-cli invalidateblock ${SPLIT_HASH}\n 2: defi-cli reconsiderblock ${MAIN_NET_SPLIT_HASH}\n 3: defi-cli addnode '${NODE1}' add\n 4: defi-cli addnode '${NODE2}' add")
+          fi
+        fi
+      fi
+
+      email_admin "${SUBJECT}" "${MESSAGE}"
+      exit 1
+
+    else
+
+      SUBJECT="Remote Master Node Chain Split Detected!"
+      MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.")
+      email_admin "${SUBJECT}" "${MESSAGE}"
+
+    fi
+
+  else
+
+    SUBJECT="Uh-oh!! **Possible** Local Master Node Chain Split Detected!!!"
+    MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nNote that this script could not find debug.log to verify whether or not this split occurred locally or on the remote node.\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '${NODE1}' add\n 5: defi-cli addnode '${NODE2}' add")
+    email_admin "${SUBJECT}" "${MESSAGE}"
+    exit 1
+
+  fi
+
 fi
 
 
