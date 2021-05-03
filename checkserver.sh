@@ -20,6 +20,8 @@
 
 DEBUG_LOG_PATH="./.defi/debug.log"
 
+# If your server is this number of blocks behind remote API node, you will be notified that your server is out of sync.
+OUT_OF_SYNC_THRESHOLD=2
 
 # To fix chain splits, these nodes are added at final step of instructions sent to admin
 NODE1="185.244.194.174:8555"
@@ -72,11 +74,11 @@ ordinal () {
 
 BLOCK_HEIGHT=$(./.defi/defi-cli getblockcount)
 MAIN_NET_BLOCK_HEIGHT=$(/usr/bin/curl -s https://api.defichain.io/v1/getblockcount | /usr/bin/jq -r '.data')
-BLOCK_DIFF=$((MAIN_NET_BLOCK_HEIGHT - BLOCK_HEIGHT))
+let "BLOCK_DIFF = $MAIN_NET_BLOCK_HEIGHT - $BLOCK_HEIGHT"
 
-if [[ ${BLOCK_DIFF} -gt 1 ]]; then
+if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
   SUBJECT="Uh-oh!! Your Master Node Is Out Of Sync!"
-  MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but the main net is ${BLOCK_DIFF} blocks ahead (${MAIN_NET_BLOCK_HEIGHT})")
+  MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but the main net is ${BLOCK_DIFF} blocks ahead (${MAIN_NET_BLOCK_HEIGHT}).\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
   notify "${SUBJECT}" "${MESSAGE}"
 fi
 
