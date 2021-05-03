@@ -121,7 +121,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
           ONE_BEFORE_SPLIT_HASH=$(./.defi/defi-cli getblockhash ${ONE_BEFORE_SPLIT_HEIGHT})
           MAIN_NET_ONE_BEFORE_SPLIT_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ONE_BEFORE_SPLIT_HEIGHT} | /usr/bin/jq -r '.hash')
           if [[ ${ONE_BEFORE_SPLIT_HASH} = ${MAIN_NET_ONE_BEFORE_SPLIT_HASH} ]]; then
-            MESSAGE=$(printf "DeFiChain Split detected at block ${SPLIT_HEIGHT}.\n\nVerify using ...\n\n./.defi/defi-cli getblockhash ${ONE_BEFORE_SPLIT_HEIGHT}\n./.defi/defi-cli getblockhash ${SPLIT_HEIGHT}\n\n... and comparing with ...\n\nhttps://explorer.defichain.com/#/DFI/mainnet/block/${ONE_BEFORE_SPLIT_HASH}\nhttps://explorer.defichain.com/#/DFI/mainnet/block/${ONE_BEFORE_SPLIT_HASH}\n\nTo fix:\n 1: defi-cli invalidateblock ${SPLIT_HASH}\n 2: defi-cli reconsiderblock ${MAIN_NET_SPLIT_HASH}\n 3: defi-cli addnode '${NODE1}' add\n 4: defi-cli addnode '${NODE2}' add")
+            MESSAGE=$(printf "DeFiChain Split detected at block ${SPLIT_HEIGHT}.\n\nVerify using ...\n\n./.defi/defi-cli getblockhash ${ONE_BEFORE_SPLIT_HEIGHT}\n./.defi/defi-cli getblockhash ${SPLIT_HEIGHT}\n\n... and comparing with ...\n\nhttps://explorer.defichain.com/#/DFI/mainnet/block/${ONE_BEFORE_SPLIT_HASH}\nhttps://explorer.defichain.com/#/DFI/mainnet/block/${SPLIT_HASH}\n\nTo fix:\n 1: defi-cli invalidateblock ${SPLIT_HASH}\n 2: defi-cli reconsiderblock ${MAIN_NET_SPLIT_HASH}\n 3: defi-cli addnode '${NODE1}' add\n 4: defi-cli addnode '${NODE2}' add")
           fi
         fi
       fi
