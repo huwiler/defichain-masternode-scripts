@@ -105,7 +105,12 @@ fi
 # Check for chain split
 #########################
 
-let "ADJUSTED_BLOCK_HEIGHT = $BLOCK_HEIGHT - 2"
+if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
+  ADJUSTED_BLOCK_HEIGHT=${MAIN_NET_BLOCK_HEIGHT}
+else
+  ADJUSTED_BLOCK_HEIGHT=${BLOCK_HEIGHT}
+fi
+
 LOCAL_HASH=$(./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT})
 MAIN_NET_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT} | /usr/bin/jq -r '.hash')
 
