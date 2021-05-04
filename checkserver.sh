@@ -45,6 +45,11 @@ OUT_OF_SYNC_THRESHOLD=2
 NODE1="185.244.194.174:8555"
 NODE2="45.157.177.82:8555"
 
+# Set these to blank if you don't like emojis in your subjects
+REWARD_EMOJI="$(printf '\xF0\x9F\xA5\xB3 \xF0\x9F\x8E\x89')"
+BAD_NEWS_EMOJI="$(printf '\xF0\x9F\x98\x9F')"
+THUMBS_UP_EMOJI="$(printf '\xF0\x9F\x91\x8D')"
+
 ######################################################################
 # Alert master-node admin via stdout and email if mail gun configured
 # Globals:
@@ -95,7 +100,7 @@ MAIN_NET_BLOCK_HEIGHT=$(/usr/bin/curl -s https://api.defichain.io/v1/getblockcou
 let "BLOCK_DIFF = $MAIN_NET_BLOCK_HEIGHT - $BLOCK_HEIGHT"
 
 if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
-  SUBJECT="Uh-oh!! Your Master Node Is Out Of Sync!"
+  SUBJECT="Uh-oh!! Your Master Node Is Out Of Sync! $BAD_NEWS_EMOJI"
   MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but the main net is ${BLOCK_DIFF} blocks ahead (${MAIN_NET_BLOCK_HEIGHT}).\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
   notify "${SUBJECT}" "${MESSAGE}"
 fi
@@ -120,7 +125,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
     if [[ $(tail -n 10 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
 
-      SUBJECT="Uh-oh!! Local Master Node Chain Split Detected!!!"
+      SUBJECT="Uh-oh!! Local Master Node Chain Split Detected!!! $BAD_NEWS_EMOJI"
       MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '${NODE1}' add\n 5: defi-cli addnode '${NODE2}' add\n\nNote that an attempt to find the split block was attempted and failed.  You can help improve this script by notifying huwilerm@champlain.edu and sending him your debug.log.")
 
       # Attempt to find block where split occurred and supply admin with exact code required to fix
@@ -157,7 +162,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
     else
 
-      SUBJECT="Remote Master Node Chain Split Detected!"
+      SUBJECT="Remote Master Node Chain Split Detected! $BAD_NEWS_EMOJI"
       MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.")
       notify "${SUBJECT}" "${MESSAGE}"
 
@@ -165,7 +170,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
   else
 
-    SUBJECT="Uh-oh!! **Possible** Local Master Node Chain Split Detected!!!"
+    SUBJECT="Uh-oh!! **Possible** Local Master Node Chain Split Detected!!! $BAD_NEWS_EMOJI"
     MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nNote that this script could not find debug.log to verify whether or not this split occurred locally or on the remote node.\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '${NODE1}' add\n 5: defi-cli addnode '${NODE2}' add")
     notify "${SUBJECT}" "${MESSAGE}"
     exit 1
@@ -185,7 +190,7 @@ MINTED_BLOCKS_FILE='./.minted_blocks'
 if [[ -f "${MINTED_BLOCKS_FILE}" ]]; then
   PREVIOUS_MINTED_BLOCKS="$(<${MINTED_BLOCKS_FILE})"
   if [[ ${MINTED_BLOCKS} > ${PREVIOUS_MINTED_BLOCKS} ]]; then
-    SUBJECT="Woo-hoo!! Master Node Rewards Incoming!"
+    SUBJECT="Woo-hoo!! Master Node Rewards Incoming! $REWARD_EMOJI"
     MESSAGE=$(printf "Your master node just earned its $(ordinal ${MINTED_BLOCKS}) DeFiChain Reward!")
     notify "${SUBJECT}" "${MESSAGE}"
   fi
@@ -194,7 +199,7 @@ fi
 echo "${MINTED_BLOCKS}" > ${MINTED_BLOCKS_FILE}
 
 echo ""
-echo "Your master node is running perfectly :-)"
+echo "Your master node is running perfectly $THUMBS_UP_EMOJI"
 echo ""
 
 exit 0
