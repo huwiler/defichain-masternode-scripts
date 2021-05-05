@@ -142,7 +142,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
       # This code attempts to find these lines in the debug log, verifies the split block has incorrect hash, and then
       # verifies that the block before it has the correct hash.  Exact code to verify and fix is then sent to admin.
 
-      DEBUG_LOG_LINE_OF_SPLIT=$(tac ${DEBUG_LOG_PATH} | grep -m 1 UpdateTip)
+      DEBUG_LOG_LINE_OF_SPLIT=$(tac ${DEBUG_LOG_PATH} | grep -Pazom1 '(?s)(?<=\(code\s16\)\)\n)\N+UpdateTip\N+\n(?=\N+(UpdateTip|removeForBlock))' | head -1)
       DEBUG_LOG_REGEX="best=([0-9a-f]+)[[:space:]]height=([0-9]+)"
       if [[ ${DEBUG_LOG_LINE_OF_SPLIT} =~ $DEBUG_LOG_REGEX ]]; then
         SPLIT_HASH=${BASH_REMATCH[1]}
