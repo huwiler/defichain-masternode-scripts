@@ -63,7 +63,7 @@ THUMBS_UP_EMOJI="$(printf '\xF0\x9F\x91\x8D')"
 notify () {
 
   if [[ -v MAIL_GUN_DOMAIN && -v MAIL_GUN_USER && -v MAIL_GUN_API && -v EMAIL ]]; then
-    curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}"
+    curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}" > /dev/null
   fi
 
   # If not using mailgun, replace this with whatever SMTP or other notification solution you wish to use.  Arguments $1
