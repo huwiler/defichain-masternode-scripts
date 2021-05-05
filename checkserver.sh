@@ -70,8 +70,11 @@ notify () {
   # If not using mailgun, replace this with whatever SMTP or other notification solution you wish to use.  Arguments $1
   # and $2 contain email subject and message respectively.
 
+  echo ""
   echo "${1}"
+  echo ""
   echo "${2}"
+  echo ""
 
 }
 
@@ -164,7 +167,8 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
     else
 
       SUBJECT="Remote Master Node Chain Split Detected! $BAD_NEWS_EMOJI"
-      MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.")
+      MAIN_NET_ERROR=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT})
+      MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.\n\nProof: \n\n./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT}\n$LOCAL_HASH\n/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT}\n$MAIN_NET_ERROR")
       notify "${SUBJECT}" "${MESSAGE}"
 
     fi
@@ -199,7 +203,6 @@ fi
 
 echo "${MINTED_BLOCKS}" > ${MINTED_BLOCKS_FILE}
 
-echo ""
 echo "Your master node is running perfectly $THUMBS_UP_EMOJI"
 echo ""
 
