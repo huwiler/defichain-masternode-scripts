@@ -34,6 +34,7 @@
 #MAIL_GUN_DOMAIN=mg.yourdomain.com
 #MAIL_GUN_API=https://api.mailgun.net/v3/mg.yourdomain.com/messages
 #MAIL_GUN_USER=api:key-123abcdefghijklmnopqrstuvwxyz123
+#MAIL_FROM_LABEL='DeFiChain Masternode'
 #EMAIL=you@emaildomain.com
 
 DEBUG_LOG_PATH="./.defi/debug.log"
@@ -45,7 +46,7 @@ OUT_OF_SYNC_THRESHOLD=2
 NODE1="185.244.194.174:8555"
 NODE2="45.157.177.82:8555"
 
-# Set these to blank if you don't like emojis in your subjects
+# Set these to blank if you don't like emojis in your notifications
 REWARD_EMOJI="$(printf '\xF0\x9F\xA5\xB3 \xF0\x9F\x8E\x89')"
 BAD_NEWS_EMOJI="$(printf '\xF0\x9F\x98\x9F')"
 THUMBS_UP_EMOJI="$(printf '\xF0\x9F\x91\x8D')"
@@ -63,7 +64,7 @@ THUMBS_UP_EMOJI="$(printf '\xF0\x9F\x91\x8D')"
 notify () {
 
   if [[ -v MAIL_GUN_DOMAIN && -v MAIL_GUN_USER && -v MAIL_GUN_API && -v EMAIL ]]; then
-    curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="DEFICHAIN MASTERNODE mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}" > /dev/null
+    curl -s --user "${MAIL_GUN_USER}" "${MAIL_GUN_API}" -F from="${MAIL_FROM_LABEL} mailgun@${MAIL_GUN_DOMAIN}" -F to="${EMAIL}" -F subject="${1}" -F text="${2}" > /dev/null
   fi
 
   # If not using mailgun, replace this with whatever SMTP or other notification solution you wish to use.  Arguments $1
@@ -123,7 +124,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
   if [[ -f ${DEBUG_LOG_PATH} ]]; then
 
-    if [[ $(tail -n 10 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
+    if [[ $(tail -n 20 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
 
       SUBJECT="Uh-oh!! Local Master Node Chain Split Detected!!! $BAD_NEWS_EMOJI"
       MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode '${NODE1}' add\n 5: defi-cli addnode '${NODE2}' add\n\nNote that an attempt to find the split block was attempted and failed.  You can help improve this script by notifying huwilerm@champlain.edu and sending him your debug.log.")
