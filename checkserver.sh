@@ -10,22 +10,22 @@
 # Bugs or suggestions?  Please either message me directly (huwilerm@champlain.edu) or submit a pull request to
 # https://github.com/huwiler/defichain-masternode-scripts
 #
-#
+
 # INSTALLATION
 # ------------
 #
 # Before this script will work you must:
 #
-#  - ensure curl and jq are installed in /usr/bin/
-#  - run from the home directory that contains the .defi folder as that user
-#  - if you want the script to send you email, uncomment and edit the config information below OR replace mailgun
+#  - Ensure curl and jq are installed in /usr/bin/
+#  - Run from the home directory that contains the .defi folder as that user
+#  - If you want the script to send you email, uncomment and edit the config information below OR replace mailgun
 #    related code in notify() with local SMTP or a alternative mailer service
 #  - Once mail gun (or other notification service) is configured, I recommend setting this up to run from cron.  For
 #    example, I run this every half hour via the following crontab entry:
 #
 #    */30 * * * * /home/huwiler/bin/checkserver.sh
 #
-#
+
 # CONFIG
 # ------
 #
@@ -39,7 +39,7 @@
 
 DEBUG_LOG_PATH="./.defi/debug.log"
 
-# If your server is this number of blocks behind remote API node, you will be notified that your server is out of sync.
+# If your server is this number of blocks behind remote API node, you will be notified that your server is out of sync
 OUT_OF_SYNC_THRESHOLD=2
 
 # To fix chain splits, these nodes are added at final step of instructions sent to admin
@@ -50,6 +50,10 @@ NODE2="45.157.177.82:8555"
 REWARD_EMOJI="$(printf '\xF0\x9F\xA5\xB3 \xF0\x9F\x8E\x89')"
 BAD_NEWS_EMOJI="$(printf '\xF0\x9F\x98\x9F')"
 THUMBS_UP_EMOJI="$(printf '\xF0\x9F\x91\x8D')"
+
+# If log file is larger than this (in bytes), alert admin
+LOG_FILE_SIZE_THRESHOLD=20000000
+
 
 ######################################################################
 # Alert master-node admin via stdout and email if mail gun configured
@@ -79,7 +83,7 @@ notify () {
 }
 
 ##################################################################
-# Used to append proper ordinal to number.  E.g. 1st 3rd 4th etc
+# Used to append proper ordinal to number.  e.g. 1st 3rd 4th etc
 # Arguments:
 #   Number
 # Output:
@@ -166,7 +170,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
     else
 
-      SUBJECT="Remote Master Node Chain Split Detected! $BAD_NEWS_EMOJI"
+      SUBJECT="Remote Master Node Chain Split Detected!"
       MAIN_NET_ERROR=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT})
       MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.\n\nProof: \n\n./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT}\n$LOCAL_HASH\n/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT}\n$MAIN_NET_ERROR")
       notify "${SUBJECT}" "${MESSAGE}"
@@ -182,6 +186,20 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
   fi
 
+fi
+
+
+########################
+# Check debug log size
+########################
+
+if [[ -f ${DEBUG_LOG_PATH} ]]; then
+  DEBUG_SIZE_MB=$(stat -c %s ${DEBUG_LOG_PATH})
+  if [[ ${DEBUG_SIZE_MB} -gt ${LOG_FILE_SIZE_THRESHOLD} ]]; then
+    SUBJECT="Uh Oh, DeFiChain's debug.log Is Too Large ${BAD_NEWS_EMOJI}"
+    MESSAGE=$(printf "DeFiChain's ${DEBUG_LOG_PATH} is larger than threshold set in configuration (LOG_FILE_SIZE_THRESHOLD=${LOG_FILE_SIZE_THRESHOLD} bytes).  Consider configuring logrotate to avoid having the file size grow too large.")
+    notify "${SUBJECT}" "${MESSAGE}"
+  fi
 fi
 
 
