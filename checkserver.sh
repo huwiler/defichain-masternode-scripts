@@ -194,10 +194,10 @@ fi
 ########################
 
 if [[ -f ${DEBUG_LOG_PATH} ]]; then
-  DEBUG_SIZE_MB=$(stat -c %s ${DEBUG_LOG_PATH})
-  if [[ ${DEBUG_SIZE_MB} -gt ${LOG_FILE_SIZE_THRESHOLD} ]]; then
+  DEBUG_SIZE=$(stat -c %s ${DEBUG_LOG_PATH})
+  if [[ ${DEBUG_SIZE} -gt ${LOG_FILE_SIZE_THRESHOLD} ]]; then
     SUBJECT="Uh Oh, DeFiChain's debug.log Is Too Large ${BAD_NEWS_EMOJI}"
-    MESSAGE=$(printf "DeFiChain's ${DEBUG_LOG_PATH} is larger than threshold set in configuration (LOG_FILE_SIZE_THRESHOLD=${LOG_FILE_SIZE_THRESHOLD} bytes).  Consider configuring logrotate to avoid having the file size grow too large.")
+    MESSAGE=$(printf "DeFiChain's ${DEBUG_LOG_PATH} is larger than threshold set in configuration. LOG_FILE_SIZE_THRESHOLD=${LOG_FILE_SIZE_THRESHOLD} bytes. ${DEBUG_LOG_PATH} size is ${DEBUG_SIZE}. Consider configuring logrotate to avoid having the file size grow too large.")
     notify "${SUBJECT}" "${MESSAGE}"
   fi
 fi
