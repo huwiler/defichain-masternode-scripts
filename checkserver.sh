@@ -146,17 +146,8 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
       # Local chain split detected.  Find it.
       #########################################
 
-      IFS=$'\n'
-      LINES=( $(tac ${DEBUG_LOG_PATH} | grep UpdateTip | head -50000 | tac) )
-      UPDATE_TIP_LOG_REGEX="best=([0-9a-f]+)[[:space:]]height=([0-9]+)"
-
-      if [[ ${LINES[1]} =~ $UPDATE_TIP_LOG_REGEX ]]; then
-        RANGE_MIN=${BASH_REMATCH[2]}
-      fi
-
-      if [[ ${LINES[-1]} =~ $UPDATE_TIP_LOG_REGEX ]]; then
-        RANGE_MAX=${BASH_REMATCH[2]}
-      fi
+      RANGE_MAX=${BLOCK_HEIGHT}
+      let "RANGE_MIN = $RANGE_MAX - 40000"
 
       while [[ "${RANGE_MIN}" -le "${RANGE_MAX}" ]]; do
 
