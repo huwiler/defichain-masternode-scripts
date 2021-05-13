@@ -59,6 +59,9 @@ RED_X_EMOJI="$(printf '\xE2\x9D\x8C')"
 # If log file is larger than this (in bytes), alert admin
 LOG_FILE_SIZE_THRESHOLD=20000000
 
+# When a chain split is detected, how far back (# of blocks) should checkserver.sh look?
+SPLIT_SEARCH_DISTANCE=40000
+
 
 ######################################################################
 # Alert master-node admin via stdout and email if mail gun configured
@@ -147,7 +150,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
       #########################################
 
       RANGE_MAX=${BLOCK_HEIGHT}
-      let "RANGE_MIN = $RANGE_MAX - 40000"
+      let "RANGE_MIN = $RANGE_MAX - $SPLIT_SEARCH_DISTANCE"
 
       while [[ "${RANGE_MIN}" -le "${RANGE_MAX}" ]]; do
 
