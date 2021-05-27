@@ -181,7 +181,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
             ERROR_MESSAGE=""
             if [[ ${MAIN_NET_HASH} = "null" ]]; then
-              MAIN_NET_HASH="<get this from https://explorer.defichain.com block ${HEIGHT}>"
+              MAIN_NET_HASH="<get this from https://chainz.cryptoid.info/dfi/block.dws?${HEIGHT}.htm>"
               FIX_SPLIT_AUTOMATICALLY=false
               ERROR_MESSAGE="\n\n* You need to look the block hash at height ${HEIGHT} manually due to error on remote node and replace ${MAIN_NET_HASH} with that value."
             fi
