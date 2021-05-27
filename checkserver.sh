@@ -113,6 +113,15 @@ ordinal () {
 
 BLOCK_HEIGHT=$(./.defi/defi-cli getblockcount)
 MAIN_NET_BLOCK_HEIGHT=$(/usr/bin/curl -s https://api.defichain.io/v1/getblockcount | /usr/bin/jq -r '.data')
+
+if [[ ${MAIN_NET_BLOCK_HEIGHT} = "null" ]]; then
+  MAIN_NET_ERROR=$(/usr/bin/curl -s https://api.defichain.io/v1/getblockcount)
+  SUBJECT="Uh-oh!! Looks like defichain.io is having server problems."
+  MESSAGE=$(printf "/usr/bin/curl -s https://api.defichain.io/v1/getblockcount returns the following:\n\n${MAIN_NET_ERROR}")
+  notify "${SUBJECT}" "${MESSAGE}"
+  exit 1
+fi
+
 let "BLOCK_DIFF = $MAIN_NET_BLOCK_HEIGHT - $BLOCK_HEIGHT"
 
 if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
@@ -169,14 +178,25 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
           PREVIOUS_MAIN_NET_HASH=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${HEIGHT_MINUS_ONE} | /usr/bin/jq -r '.hash')
 
           if [[ ${PREVIOUS_LOCAL_HASH} = ${PREVIOUS_MAIN_NET_HASH} ]]; then
-            COMMANDS_TO_FIX="./.defi/defi-cli invalidateblock ${LOCAL_HASH} && ./.defi/defi-cli reconsiderblock ${MAIN_NET_HASH} && ./.defi/defi-cli addnode ${NODE1} add && ./.defi/defi-cli addnode ${NODE2} add"
+
+            ERROR_MESSAGE=""
+            if [[ ${MAIN_NET_HASH} = "null" ]]; then
+              MAIN_NET_HASH="<get this from https://explorer.defichain.com block ${HEIGHT}>"
+              FIX_SPLIT_AUTOMATICALLY=false
+              ERROR_MESSAGE="\n\n* You need to look the block hash at height ${HEIGHT} manually due to error on remote node and replace ${MAIN_NET_HASH} with that value."
+            fi
+
+            COMMANDS_TO_FIX=$(printf "./.defi/defi-cli invalidateblock ${LOCAL_HASH}\n./.defi/defi-cli reconsiderblock ${MAIN_NET_HASH}\n./.defi/defi-cli addnode ${NODE1} add\n./.defi/defi-cli addnode ${NODE2} add")
             MESSAGE=$(printf "DeFiChain Split detected at block ${HEIGHT}:\n\n----- technical information -----\n$ ./.defi/defi-cli getblockhash ${HEIGHT_MINUS_ONE}\n${PREVIOUS_LOCAL_HASH}\n$ /usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${HEIGHT_MINUS_ONE} | /usr/bin/jq -r '.hash'\n${PREVIOUS_MAIN_NET_HASH}\n${GREEN_CHECK_EMOJI} Local and main-net hash match on block ${HEIGHT_MINUS_ONE}\n\n$ ./.defi/defi-cli getblockhash ${HEIGHT}\n${LOCAL_HASH}\n$ /usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${HEIGHT} | /usr/bin/jq -r '.hash'\n${MAIN_NET_HASH}\n${RED_X_EMOJI} Local and main-net hash don't match on block ${HEIGHT}\n----- end technical information -----\n")
             if [[ $FIX_SPLIT_AUTOMATICALLY = true ]]; then
               MESSAGE=$(printf "${MESSAGE}\n\nIn order to move your node back onto the main chain, the following command will be executed automatically:\n\n$ ${COMMANDS_TO_FIX}\n\nTo avoid having this script do this automatically, set FIX_SPLIT_AUTOMATICALLY=false")
               OUTPUT=$(./.defi/defi-cli invalidateblock ${LOCAL_HASH} && ./.defi/defi-cli reconsiderblock ${MAIN_NET_HASH} && ./.defi/defi-cli addnode ${NODE1} add && ./.defi/defi-cli addnode ${NODE2} add)
             else
-              MESSAGE=$(printf "${MESSAGE}\n\nIn order to move your node back onto the main chain, the following command should be executed:\n\n$ ${COMMANDS_TO_FIX}\n\nTo have this do this automatically for you, set FIX_SPLIT_AUTOMATICALLY=true")
+              MESSAGE=$(printf "${MESSAGE}\n\nIn order to move your node back onto the main chain, the following command should be executed:\n\n$ ${COMMANDS_TO_FIX}")
             fi
+
+            MESSAGE=$(printf "${MESSAGE}${ERROR_MESSAGE}")
+
             break
 
           else
@@ -195,9 +215,16 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
     else
 
-      SUBJECT="Remote Master Node Chain Split Detected!"
+      #TODO: When more remote nodes become available, we should add some redundancy here to keep checkserver.sh functioning when remote errors/splits occur.
+
       MAIN_NET_ERROR=$(/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT})
-      MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.\n\nProof: \n\n./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT}\n$LOCAL_HASH\n/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT}\n$MAIN_NET_ERROR")
+      if [[ "${MAIN_NET_ERROR}" = "null" ]]; then
+        SUBJECT="Remote Master Node Failure Detected!"
+        MESSAGE=$(printf "Something is wrong with remote API used to check for splits.  The following API call returned an empty response.\n\ncurl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT}")
+      else
+        SUBJECT="Remote Master Node Chain Split Detected!"
+        MESSAGE=$(printf "Chain split detected on remote Defichain wallet node!  Please let admins know at https://t.me/DeFiMasternodes.\n\nProof: \n\n./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT}\n$LOCAL_HASH\n/usr/bin/curl -s https://staging-supernode.defichain-wallet.com/api/v1/mainnet/DFI/block/${ADJUSTED_BLOCK_HEIGHT}\n$MAIN_NET_ERROR")
+      fi
       notify "${SUBJECT}" "${MESSAGE}"
 
     fi
