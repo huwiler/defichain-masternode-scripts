@@ -114,7 +114,7 @@ join_arr () {
 
 ######################################################################################
 # Used to grab random MAIN_NET_ENDPOINT and ensure its validity.
-# Globals MAIN_NET_BLOCK_HEIGHT and MAIN_NET_ENDPOINT are set respectively.  If MAIN_NET_ENDPOINT
+# Globals MAIN_NET_BLOCK_HEIGHT and MAIN_NET_ENDPOINT are set.  If MAIN_NET_ENDPOINT
 # is unset, this indicates there was a problem finding a valid remote server
 # Arguments:
 #   None
@@ -148,7 +148,7 @@ get_remote_server () {
     # does the server return a valid response when querying for block height?
     MAIN_NET_BLOCK_HEIGHT=$(echo "${MAIN_NET_SERVER_TIP}" | /usr/bin/jq -r '.height')
     if [[ ! "${MAIN_NET_BLOCK_HEIGHT}" =~ ^[0-9]{6,10}$ ]]; then
-      echo "WARNING: Invalid response received from ${MAIN_NET_ENDPOINT}block/tip"
+      echo "WARNING: Invalid response received from ${MAIN_NET_ENDPOINT}block/tip:"
       echo "${MAIN_NET_SERVER_TIP}"
       INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
       unset MAIN_NET_ENDPOINT
@@ -183,14 +183,48 @@ ordinal () {
 }
 
 
+##################################
+# Check if server is out of sync
+##################################
+
+get_remote_server
+
+while true; do
+
+  if [[ -v MAIN_NET_ENDPOINT ]]; then
+    let "BLOCK_DIFF = $MAIN_NET_BLOCK_HEIGHT - $BLOCK_HEIGHT"
+    BLOCK_DIFF=${BLOCK_DIFF#-}
+    if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
+      if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
+        echo "WARNING: Remote node ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind local node."
+        INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
+        get_remote_server
+        continue
+      fi
+      SUBJECT="Uh-oh!! Your Master Node Is Out Of Sync! $BAD_NEWS_EMOJI"
+      MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks ahead (${MAIN_NET_BLOCK_HEIGHT}).\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
+      notify "${SUBJECT}" "${MESSAGE}"
+      break
+    fi
+
+    # yay! we're all in sync.
+    break
+
+  else
+    SUBJECT="Uh-oh!! All remote nodes are out Of Sync!"
+    MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind (${MAIN_NET_BLOCK_HEIGHT}).  All registered remote nodes are too far behind your node (${MAIN_NET_ENDPOINTS_JOINED}).\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
+    notify "${SUBJECT}" "${MESSAGE}"
+    echo "WARNING: All registered (${MAIN_NET_ENDPOINTS_JOINED}) nodes are out of sync."
+    exit 1
+  fi
+
+done
 
 ###############################
 # Check for remote chain split
 ###############################
 
 while true; do
-
-  get_remote_server
 
   if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
     ADJUSTED_BLOCK_HEIGHT=${MAIN_NET_BLOCK_HEIGHT}
@@ -207,6 +241,7 @@ while true; do
 
         echo "WARNING: possible remote split detected on server ${MAIN_NET_ENDPOINT}."
         INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
+        get_remote_server
         continue
 
       fi
@@ -294,7 +329,7 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
     else
 
       SUBJECT="Uh-oh!! Local Master Node Chain Split Detected!!! $BAD_NEWS_EMOJI"
-      MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nNote that this script exhausted all registered remote APIs while trying to find a remote server and was not able to determine where the split occurred automatically.\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode ${NODE1} add\n 5: defi-cli addnode ${NODE2} add")
+      MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nNote that this script exhausted all registered remote APIs (${MAIN_NET_ENDPOINTS_JOINED}) while trying to find a remote server and was not able to determine where the split occurred automatically.\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode ${NODE1} add\n 5: defi-cli addnode ${NODE2} add")
       notify "${SUBJECT}" "${MESSAGE}"
       exit 1
 
@@ -309,19 +344,6 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
   fi
 
-fi
-
-
-##################################
-# Check if server is out of sync
-##################################
-
-let "BLOCK_DIFF = $MAIN_NET_BLOCK_HEIGHT - $BLOCK_HEIGHT"
-BLOCK_DIFF=${BLOCK_DIFF#-}
-if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
-  SUBJECT="Uh-oh!! Your Master Node Is Out Of Sync! $BAD_NEWS_EMOJI"
-  MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but the main net is ${BLOCK_DIFF} blocks ahead (${MAIN_NET_BLOCK_HEIGHT}).\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
-  notify "${SUBJECT}" "${MESSAGE}"
 fi
 
 
