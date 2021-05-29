@@ -195,6 +195,7 @@ ordinal () {
 
 get_remote_server
 
+SLOW_REMOTE_BLOCK_HEIGHTS=()
 while true; do
 
   if [[ -v MAIN_NET_ENDPOINT ]]; then
@@ -203,11 +204,12 @@ while true; do
     if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
       if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
         echo "WARNING: Remote node ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind local node."
+        SLOW_REMOTE_BLOCK_HEIGHTS+=(${BLOCK_HEIGHT})
         get_remote_server
         continue
       fi
       SUBJECT="Uh-oh!! Your Master Node Is Out Of Sync! $BAD_NEWS_EMOJI"
-      MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks ahead (${MAIN_NET_BLOCK_HEIGHT}).\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
+      MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT}, which is ${BLOCK_DIFF} blocks behind remote node ${MAIN_NET_ENDPOINT}.\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
       notify "${SUBJECT}" "${MESSAGE}"
       break
     fi
@@ -216,8 +218,11 @@ while true; do
     break
 
   else
+
+    SLOW_REMOTE_BLOCK_HEIGHTS_JOINED=$(join_arr "," "${SLOW_REMOTE_BLOCK_HEIGHTS}")
+    SLOW_REMOTE_BLOCK_HEIGHTS_JOINED="${SLOW_REMOTE_BLOCK_HEIGHTS//,/block\/tip, }"
     SUBJECT="Uh-oh!! All remote nodes are out Of Sync!"
-    MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind (${MAIN_NET_BLOCK_HEIGHT}).  All registered remote nodes are too far behind your node (${MAIN_NET_ENDPOINTS_JOINED}).\n\nNote you can adjust sensitivity of this warning by changing OUT_OF_SYNC_THRESHOLD (currently set to '${OUT_OF_SYNC_THRESHOLD}') in checkserver.sh")
+    MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but remote node heights are ${SLOW_REMOTE_BLOCK_HEIGHTS_JOINED}.  These are all beyond the OUT_OF_SYNC_THRESHOLD, which is set to '${OUT_OF_SYNC_THRESHOLD}' in checkserver.sh.  Remote nodes checked: ${MAIN_NET_ENDPOINTS_JOINED}")
     notify "${SUBJECT}" "${MESSAGE}"
     echo "WARNING: All registered (${MAIN_NET_ENDPOINTS_JOINED}) nodes are out of sync."
     exit 1
