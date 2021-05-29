@@ -113,7 +113,8 @@ join_arr () {
 }
 
 ######################################################################################
-# Used to grab random MAIN_NET_ENDPOINT and ensure its validity.
+# Used to grab random MAIN_NET_ENDPOINT and ensure its validity.  If called twice, the
+# first server returned will be invalidated and replaced with another registered server.
 # Globals MAIN_NET_BLOCK_HEIGHT and MAIN_NET_ENDPOINT are set.  If MAIN_NET_ENDPOINT
 # is unset, this indicates there was a problem finding a valid remote server
 # Arguments:
@@ -126,6 +127,11 @@ BLOCK_HEIGHT=$(./.defi/defi-cli getblockcount)
 MAIN_NET_ENDPOINTS_JOINED=$(join_arr "," "${MAIN_NET_ENDPOINTS}")
 MAIN_NET_ENDPOINTS_JOINED="${MAIN_NET_ENDPOINTS_JOINED//,/block\/tip, }block/tip"
 get_remote_server () {
+
+  if [[ -v MAIN_NET_ENDPOINT ]]; then
+    INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
+    unset MAIN_NET_ENDPOINT
+  fi
 
   # randomize server endpoint order
   MAIN_NET_ENDPOINTS=( $(shuf -e "${MAIN_NET_ENDPOINTS[@]}") )
@@ -197,7 +203,6 @@ while true; do
     if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
       if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
         echo "WARNING: Remote node ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind local node."
-        INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
         get_remote_server
         continue
       fi
@@ -240,7 +245,6 @@ while true; do
       if [[ ! $(tail -n 20 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
 
         echo "WARNING: possible remote split detected on server ${MAIN_NET_ENDPOINT}."
-        INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
         get_remote_server
         continue
 
