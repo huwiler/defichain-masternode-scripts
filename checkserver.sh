@@ -98,6 +98,7 @@ notify () {
 
 }
 
+
 ##################################################################
 # Used to turn an array into a single delimited string
 # Arguments:
@@ -112,6 +113,7 @@ join_arr () {
   echo "$*"
 }
 
+
 ######################################################################################
 # Used to grab random MAIN_NET_ENDPOINT and ensure its validity.  If called twice, the
 # first server returned will be invalidated and replaced with another registered server.
@@ -122,14 +124,16 @@ join_arr () {
 # Output:
 #   Sets MAIN_NET_BLOCK_HEIGHT and MAIN_NET_ENDPOINT globals
 ######################################################################################
-INVALID_MAIN_NET_ENDPOINTS=()
+INVALID_ENDPOINTS=()
+INVALID_ENDPOINT_ERROR_MESSAGES=()
 BLOCK_HEIGHT=$(./.defi/defi-cli getblockcount)
-MAIN_NET_ENDPOINTS_JOINED=$(join_arr "," "${MAIN_NET_ENDPOINTS}")
+MAIN_NET_ENDPOINTS_JOINED=$(join_arr "," "${MAIN_NET_ENDPOINTS[@]}")
 MAIN_NET_ENDPOINTS_JOINED="${MAIN_NET_ENDPOINTS_JOINED//,/block\/tip, }block/tip"
+
 get_remote_server () {
 
   if [[ -v MAIN_NET_ENDPOINT ]]; then
-    INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
+    INVALID_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
     unset MAIN_NET_ENDPOINT
   fi
 
@@ -140,7 +144,7 @@ get_remote_server () {
   for MAIN_NET_ENDPOINT in "${MAIN_NET_ENDPOINTS[@]}"; do
 
     # has endpoint already been flagged invalid?
-    IN_INVALID_ARRAY=$(echo "${INVALID_MAIN_NET_ENDPOINTS[@]}" | grep -o "${MAIN_NET_ENDPOINT}" | wc -w)
+    IN_INVALID_ARRAY=$(echo "${INVALID_ENDPOINTS[@]}" | grep -o "${MAIN_NET_ENDPOINT}" | wc -w)
     if [[ ${IN_INVALID_ARRAY} -ne "0" ]]; then
       unset MAIN_NET_ENDPOINT
       continue
@@ -156,7 +160,8 @@ get_remote_server () {
     if [[ ! "${MAIN_NET_BLOCK_HEIGHT}" =~ ^[0-9]{6,10}$ ]]; then
       echo "WARNING: Invalid response received from ${MAIN_NET_ENDPOINT}block/tip:"
       echo "${MAIN_NET_SERVER_TIP}"
-      INVALID_MAIN_NET_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
+      INVALID_ENDPOINTS+=(${MAIN_NET_ENDPOINT})
+      INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/tip: Returning invalid API response: ${MAIN_NET_SERVER_TIP}")
       unset MAIN_NET_ENDPOINT
       continue
     fi
@@ -171,6 +176,7 @@ get_remote_server () {
   notify "${SUBJECT}" "${MESSAGE}"
 
 }
+
 
 ##################################################################
 # Used to append proper ordinal to number.  e.g. 1st 3rd 4th etc
@@ -205,6 +211,7 @@ while true; do
       if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
         echo "WARNING: Remote node ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind local node."
         SLOW_REMOTE_BLOCK_HEIGHTS+=(${BLOCK_HEIGHT})
+        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}: Block height is ${MAIN_NET_ENDPOINT}.  This is ${BLOCK_DIFF} blocks behind your node (${BLOCK_HEIGHT}).  To adjust sensitivity of OUT_OF_SYNC_THRESHOLD, set in checkserver.sh.  It's currently set to '${OUT_OF_SYNC_THRESHOLD}'")
         get_remote_server
         continue
       fi
@@ -218,17 +225,17 @@ while true; do
     break
 
   else
-
-    SLOW_REMOTE_BLOCK_HEIGHTS_JOINED=$(join_arr "," "${SLOW_REMOTE_BLOCK_HEIGHTS}")
-    SLOW_REMOTE_BLOCK_HEIGHTS_JOINED="${SLOW_REMOTE_BLOCK_HEIGHTS//,/block\/tip, }"
-    SUBJECT="Uh-oh!! All remote nodes are out Of Sync!"
-    MESSAGE=$(printf "Your master node block height is ${BLOCK_HEIGHT} but remote node heights are ${SLOW_REMOTE_BLOCK_HEIGHTS_JOINED}.  These are all beyond the OUT_OF_SYNC_THRESHOLD, which is set to '${OUT_OF_SYNC_THRESHOLD}' in checkserver.sh.  Remote nodes checked: ${MAIN_NET_ENDPOINTS_JOINED}")
+    INVALID_ENDPOINT_ERROR_MESSAGES_JOINED=$(join_arr ";" "${INVALID_ENDPOINT_ERROR_MESSAGES[@]}")
+    INVALID_ENDPOINT_ERROR_MESSAGES_JOINED="${INVALID_ENDPOINT_ERROR_MESSAGES_JOINED//;/; }"
+    SUBJECT="Uh-oh!! All remote nodes are invalid!"
+    MESSAGE=$(printf "All remote nodes used to perform diagnostic checks against your node appear to be having issues: ${INVALID_ENDPOINT_ERROR_MESSAGES_JOINED}.  If this problem persists, please let folks at https://t.me/DeFiMasternodes know.")
     notify "${SUBJECT}" "${MESSAGE}"
     echo "WARNING: All registered (${MAIN_NET_ENDPOINTS_JOINED}) nodes are out of sync."
     exit 1
   fi
 
 done
+
 
 ###############################
 # Check for remote chain split
@@ -248,11 +255,10 @@ while true; do
   if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
     if [[ -f ${DEBUG_LOG_PATH} ]]; then
       if [[ ! $(tail -n 20 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
-
-        echo "WARNING: possible remote split detected on server ${MAIN_NET_ENDPOINT}."
+        echo "WARNING: possible remote split detected at ${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}."
+        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}: Possible remote split detected.  Local hash (${LOCAL_HASH}) and remote hash (${MAIN_NET_HASH}) do not match at height ${ADJUSTED_BLOCK_HEIGHT} and analysis of local debug.log doesn't seem to indicate a local split.")
         get_remote_server
         continue
-
       fi
     fi
   fi
@@ -337,8 +343,10 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
 
     else
 
+      INVALID_ENDPOINT_ERROR_MESSAGES_JOINED=$(join_arr ";" "${INVALID_ENDPOINT_ERROR_MESSAGES[@]}")
+      INVALID_ENDPOINT_ERROR_MESSAGES_JOINED="${INVALID_ENDPOINT_ERROR_MESSAGES_JOINED//;/; }"
       SUBJECT="Uh-oh!! Local Master Node Chain Split Detected!!! $BAD_NEWS_EMOJI"
-      MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nNote that this script exhausted all registered remote APIs (${MAIN_NET_ENDPOINTS_JOINED}) while trying to find a remote server and was not able to determine where the split occurred automatically.\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode ${NODE1} add\n 5: defi-cli addnode ${NODE2} add")
+      MESSAGE=$(printf "DeFiChain Split detected before block height ${ADJUSTED_BLOCK_HEIGHT}\n\nNote that this script exhaustively checked against all registered remote nodes, but due to the following problems detected, each were invalidated: ${INVALID_ENDPOINT_ERROR_MESSAGES_JOINED}.  Because of these problems, checkserver.sh was not able to automatically verify and find the split for you.\n\nLocal hash: ${LOCAL_HASH}\nMainnet hash: ${MAIN_NET_HASH}\n\nSee https://explorer.defichain.com/#/DFI/mainnet/block/${MAIN_NET_HASH}.\n\nTo fix:\n 1: Find block where split occurred in ~/.defi/debug.log by comparing block hashes in explorer (using link above).\n 2: defi-cli invalidateblock <incorrect block hash>\n 3: defi-cli reconsiderblock <correct block hash from explorer>\n 4: defi-cli addnode ${NODE1} add\n 5: defi-cli addnode ${NODE2} add")
       notify "${SUBJECT}" "${MESSAGE}"
       exit 1
 
