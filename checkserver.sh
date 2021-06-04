@@ -171,9 +171,6 @@ get_remote_server () {
   done
 
   unset MAIN_NET_ENDPOINT
-  SUBJECT="Uh-oh!! Remote server problems detected."
-  MESSAGE=$(printf "Unable to check server health against remote masternode servers.\n\nNone of the following nodes appear to be returning valid results: ${MAIN_NET_ENDPOINTS_JOINED}.")
-  notify "${SUBJECT}" "${MESSAGE}"
 
 }
 
@@ -211,7 +208,7 @@ while true; do
       if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
         echo "WARNING: Remote node ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind local node."
         SLOW_REMOTE_BLOCK_HEIGHTS+=(${BLOCK_HEIGHT})
-        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}: Block height is ${MAIN_NET_ENDPOINT}.  This is ${BLOCK_DIFF} blocks behind your node (${BLOCK_HEIGHT}).  To adjust sensitivity of OUT_OF_SYNC_THRESHOLD, set in checkserver.sh.  It's currently set to '${OUT_OF_SYNC_THRESHOLD}'")
+        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}: Block height is ${$MAIN_NET_BLOCK_HEIGHT}.  This is ${BLOCK_DIFF} blocks behind your node, which has a block height of ${BLOCK_HEIGHT}.  To adjust sensitivity of OUT_OF_SYNC_THRESHOLD, set in checkserver.sh.  It's currently set to '${OUT_OF_SYNC_THRESHOLD}'")
         get_remote_server
         continue
       fi
