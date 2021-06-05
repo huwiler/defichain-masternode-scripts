@@ -208,7 +208,7 @@ while true; do
       if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
         echo "WARNING: Remote node ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind local node."
         SLOW_REMOTE_BLOCK_HEIGHTS+=(${BLOCK_HEIGHT})
-        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}: Block height is ${$MAIN_NET_BLOCK_HEIGHT}.  This is ${BLOCK_DIFF} blocks behind your node, which has a block height of ${BLOCK_HEIGHT}.  To adjust sensitivity of OUT_OF_SYNC_THRESHOLD, set in checkserver.sh.  It's currently set to '${OUT_OF_SYNC_THRESHOLD}'")
+        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/tip: Block height is ${MAIN_NET_BLOCK_HEIGHT}.  This is ${BLOCK_DIFF} blocks behind your node, which has a block height of ${BLOCK_HEIGHT}.  To adjust sensitivity of OUT_OF_SYNC_THRESHOLD, set in checkserver.sh.  It's currently set to '${OUT_OF_SYNC_THRESHOLD}'")
         get_remote_server
         continue
       fi
@@ -253,7 +253,7 @@ while true; do
     if [[ -f ${DEBUG_LOG_PATH} ]]; then
       if [[ ! $(tail -n 20 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
         echo "WARNING: possible remote split detected at ${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}."
-        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}: Possible remote split detected.  Local hash (${LOCAL_HASH}) and remote hash (${MAIN_NET_HASH}) do not match at height ${ADJUSTED_BLOCK_HEIGHT} and analysis of local debug.log doesn't seem to indicate a local split.")
+        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}: Possible remote split detected.  Local hash (${LOCAL_HASH}) and remote hash (${MAIN_NET_HASH}) do not match at height ${ADJUSTED_BLOCK_HEIGHT} and analysis of local debug.log doesn't seem to indicate a local split.")
         get_remote_server
         continue
       fi
