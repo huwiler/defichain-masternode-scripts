@@ -192,6 +192,18 @@ ordinal () {
 }
 
 
+###########################################
+# Check for local chain split in debug.log
+###########################################
+
+LOCAL_SPLIT_FOUND_IN_DEBUG_LOG=false
+if [[ -f ${DEBUG_LOG_PATH} ]]; then
+  if [[ $(tail -n 20 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
+    LOCAL_SPLIT_FOUND_IN_DEBUG_LOG=true
+  fi
+fi
+
+
 ##################################
 # Check if server is out of sync
 ##################################
@@ -226,6 +238,12 @@ while true; do
     INVALID_ENDPOINT_ERROR_MESSAGES_JOINED="${INVALID_ENDPOINT_ERROR_MESSAGES_JOINED//;/; }"
     SUBJECT="Uh-oh!! All remote nodes are invalid!"
     MESSAGE=$(printf "All remote nodes used to perform diagnostic checks against your node appear to be having issues: ${INVALID_ENDPOINT_ERROR_MESSAGES_JOINED}.  If this problem persists, please let folks at https://t.me/DeFiMasternodes know.")
+
+    if [[ ! LOCAL_SPLIT_FOUND_IN_DEBUG_LOG ]]; then
+      SUBJECT="Uh-oh!! Possible local chain split detected! ${BAD_NEWS_EMOJI}"
+      MESSAGE="Debug log seems to indicate possibility of local chain split; however, checkserver.sh is unable to verify due to remote server issues.  ${MESSAGE}"
+    fi
+
     notify "${SUBJECT}" "${MESSAGE}"
     echo "WARNING: All registered (${MAIN_NET_ENDPOINTS_JOINED}) nodes are out of sync."
     exit 1
@@ -249,15 +267,11 @@ while true; do
   LOCAL_HASH=$(./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT})
   MAIN_NET_HASH=$(/usr/bin/curl -s "${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}" | /usr/bin/jq -r '.hash')
 
-  if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
-    if [[ -f ${DEBUG_LOG_PATH} ]]; then
-      if [[ ! $(tail -n 20 ${DEBUG_LOG_PATH} | grep -m 1 "proof of stake failed") ]]; then
-        echo "WARNING: possible remote split detected at ${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}."
-        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}: Possible remote split detected.  Local hash (${LOCAL_HASH}) and remote hash (${MAIN_NET_HASH}) do not match at height ${ADJUSTED_BLOCK_HEIGHT} and analysis of local debug.log doesn't seem to indicate a local split.")
-        get_remote_server
-        continue
-      fi
-    fi
+  if [[ LOCAL_SPLIT_FOUND_IN_DEBUG_LOG ]]; then
+    echo "WARNING: possible remote split detected at ${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}."
+    INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}: Possible remote split detected.  Local hash (${LOCAL_HASH}) and remote hash (${MAIN_NET_HASH}) do not match at height ${ADJUSTED_BLOCK_HEIGHT} and analysis of local debug.log doesn't seem to indicate a local split.")
+    get_remote_server
+    continue
   fi
 
   break
