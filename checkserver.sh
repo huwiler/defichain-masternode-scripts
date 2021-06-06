@@ -242,6 +242,8 @@ while true; do
     if [[ ! LOCAL_SPLIT_FOUND_IN_DEBUG_LOG ]]; then
       SUBJECT="Uh-oh!! Possible local chain split detected! ${BAD_NEWS_EMOJI}"
       MESSAGE="Debug log seems to indicate possibility of local chain split; however, checkserver.sh is unable to verify due to remote server issues.  ${MESSAGE}"
+    else
+      MESSAGE="No chain split detected in log; however, checkserver.sh is unable to confirm the health of your masternode due to remote server issues.  ${MESSAGE}"
     fi
 
     notify "${SUBJECT}" "${MESSAGE}"
