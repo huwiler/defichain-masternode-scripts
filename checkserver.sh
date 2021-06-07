@@ -269,11 +269,13 @@ while true; do
     LOCAL_HASH=$(./.defi/defi-cli getblockhash ${ADJUSTED_BLOCK_HEIGHT})
     MAIN_NET_HASH=$(/usr/bin/curl -s "${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}" | /usr/bin/jq -r '.hash')
 
-    if [[ LOCAL_SPLIT_FOUND_IN_DEBUG_LOG ]]; then
-      echo "WARNING: possible remote split detected at ${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}."
-      INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}: Possible remote split detected.  Local hash (${LOCAL_HASH}) and remote hash (${MAIN_NET_HASH}) do not match at height ${ADJUSTED_BLOCK_HEIGHT} and analysis of local debug.log doesn't seem to indicate a local split.")
-      get_remote_server
-      continue
+    if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
+      if [[ ! LOCAL_SPLIT_FOUND_IN_DEBUG_LOG ]]; then
+        echo "WARNING: possible remote split detected at ${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}."
+        INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/${ADJUSTED_BLOCK_HEIGHT}: Possible remote split detected.  Local hash (${LOCAL_HASH}) and remote hash (${MAIN_NET_HASH}) do not match at height ${ADJUSTED_BLOCK_HEIGHT} and analysis of local debug.log doesn't seem to indicate a local split.")
+        get_remote_server
+        continue
+      fi
     fi
   fi
   break
