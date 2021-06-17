@@ -39,9 +39,6 @@
 
 DEBUG_LOG_PATH="./.defi/debug.log"
 
-# Set this to true if you want this script to try and fix chain splits detected automatically
-FIX_SPLIT_AUTOMATICALLY=false
-
 # If your server is this number of blocks behind remote API node, you will be notified that your server is out of sync
 OUT_OF_SYNC_THRESHOLD=2
 
@@ -210,7 +207,6 @@ fi
 
 get_remote_server
 
-SLOW_REMOTE_BLOCK_HEIGHTS=()
 while true; do
 
   if [[ -v MAIN_NET_ENDPOINT ]]; then
@@ -219,7 +215,6 @@ while true; do
     if [[ ${BLOCK_DIFF} -gt ${OUT_OF_SYNC_THRESHOLD} ]]; then
       if [[ ${BLOCK_HEIGHT} -gt ${MAIN_NET_BLOCK_HEIGHT} ]]; then
         echo "WARNING: Remote node ${MAIN_NET_ENDPOINT} is ${BLOCK_DIFF} blocks behind local node."
-        SLOW_REMOTE_BLOCK_HEIGHTS+=(${BLOCK_HEIGHT})
         INVALID_ENDPOINT_ERROR_MESSAGES+=("${MAIN_NET_ENDPOINT}block/tip: Block height is ${MAIN_NET_BLOCK_HEIGHT}.  This is ${BLOCK_DIFF} blocks behind your node, which has a block height of ${BLOCK_HEIGHT}.  To adjust sensitivity of OUT_OF_SYNC_THRESHOLD, set in checkserver.sh.  It's currently set to '${OUT_OF_SYNC_THRESHOLD}'")
         get_remote_server
         continue
@@ -324,20 +319,19 @@ if [[ ${LOCAL_HASH} != ${MAIN_NET_HASH} ]]; then
             ERROR_MESSAGE=""
             if [[ ${MAIN_NET_HASH} = "null" ]]; then
               MAIN_NET_HASH="<get this from https://chainz.cryptoid.info/dfi/block.dws?${HEIGHT}.htm>"
-              FIX_SPLIT_AUTOMATICALLY=false
               ERROR_MESSAGE="\n\n* You need to look the block hash at height ${HEIGHT} manually due to error on remote node and replace ${MAIN_NET_HASH} with that value."
             fi
 
             COMMANDS_TO_FIX=$(printf "./.defi/defi-cli invalidateblock ${LOCAL_HASH}\n./.defi/defi-cli reconsiderblock ${MAIN_NET_HASH}\n./.defi/defi-cli addnode ${NODE1} add\n./.defi/defi-cli addnode ${NODE2} add")
             MESSAGE=$(printf "DeFiChain Split detected at block ${HEIGHT}:\n\n----- technical information -----\n$ ./.defi/defi-cli getblockhash ${HEIGHT_MINUS_ONE}\n${PREVIOUS_LOCAL_HASH}\n$ /usr/bin/curl -s ${MAIN_NET_ENDPOINT}block/${HEIGHT_MINUS_ONE} | /usr/bin/jq -r '.hash'\n${PREVIOUS_MAIN_NET_HASH}\n${GREEN_CHECK_EMOJI} Local and main-net hash match on block ${HEIGHT_MINUS_ONE}\n\n$ ./.defi/defi-cli getblockhash ${HEIGHT}\n${LOCAL_HASH}\n$ /usr/bin/curl -s ${MAIN_NET_ENDPOINT}block/${HEIGHT} | /usr/bin/jq -r '.hash'\n${MAIN_NET_HASH}\n${RED_X_EMOJI} Local and main-net hash don't match on block ${HEIGHT}\n----- end technical information -----\n")
-            if [[ $FIX_SPLIT_AUTOMATICALLY = true ]]; then
-              MESSAGE=$(printf "${MESSAGE}\n\nIn order to move your node back onto the main chain, the following command will be executed automatically:\n\n$ ${COMMANDS_TO_FIX}\n\nTo avoid having this script do this automatically, set FIX_SPLIT_AUTOMATICALLY=false")
-              OUTPUT=$(./.defi/defi-cli invalidateblock ${LOCAL_HASH} && ./.defi/defi-cli reconsiderblock ${MAIN_NET_HASH} && ./.defi/defi-cli addnode ${NODE1} add && ./.defi/defi-cli addnode ${NODE2} add)
-            else
-              MESSAGE=$(printf "${MESSAGE}\n\nIn order to move your node back onto the main chain, the following command should be executed:\n\n$ ${COMMANDS_TO_FIX}")
-            fi
 
-            MESSAGE=$(printf "${MESSAGE}${ERROR_MESSAGE}")
+            if [[ LOCAL_SPLIT_FOUND_IN_DEBUG_LOG ]]; then
+              MESSAGE=$(printf "${MESSAGE}\n\nIn order to move your node back onto the main chain, the following command should be executed:\n\n$ ${COMMANDS_TO_FIX}")
+              MESSAGE=$(printf "${MESSAGE}${ERROR_MESSAGE}")
+            else
+              MESSAGE=$(printf "Remote ${MESSAGE}${ERROR_MESSAGE}")
+              SUBJECT="Remote master node split detected!"
+            fi
 
             break
 
