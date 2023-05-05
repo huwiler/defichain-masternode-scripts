@@ -1,6 +1,6 @@
 # defichain-masternode-scripts
 
-IMPORTANT: This script is still in active development.  If you choose to use it, you may run into bugs.  Please report issues here.
+IMPORTANT: I no longer run a defichain masternode, so for the foreseeable future, this script will remain as-is.  If you choose to use it, you may run into bugs.  Pull requests are still welcome.
 
 This is simple script that allows you to keep track of whether or not your node is working properly.
 
